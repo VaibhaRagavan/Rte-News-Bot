@@ -60,15 +60,24 @@ def build_prompt(history,query,context):
     instruction=f"""
           User Query:{query}
           Context:{context}
-         Instruction:
-          - Do not use any other information except the context
-         - Do not generate news which is not related to the query
-         - Do not mention about the context and query in the result
-         -If dont have the context return "Sorry,I dont have information about this, ask me something else. "
-         
-         Return:
-            - A valid JSON array of objects where each object has: "headline", "date", "source_link", and "summary".
-            - Do not include any other text, markdown, or headers outside of the JSON block.
+         INSTRUCTIONS:
+- "headline": a concise title summarizing the main news
+- "date": use the most recent article date (YYYY-MM-DD)
+- "points": 3–5 short bullet points highlighting key news
+- "articles": include 3–5 relevant articles with title and URL
+- "summary": short explanatory sentences for each key story
+IMPORTANT RULES:
+- Return ONLY valid JSON
+- Do NOT include markdown, explanations, or extra text
+- Do NOT wrap the JSON in backticks
+- Do NOT include any text before or after the JSON
+- Ensure the JSON is syntactically correct
+- Use double quotes for all keys and strings
+- Do not include trailing commas
+Return:
+- A valid JSON array of objects where each object has: "headline", "date", "source_link", and "summary".
+- Do not include any other text, markdown, or headers outside of the JSON block.
+-If information is missing, return cant find the source.
          """
     
     messages.append(

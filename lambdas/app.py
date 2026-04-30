@@ -13,8 +13,6 @@ load_dotenv()
 bedrock=boto3.client("bedrock-runtime",region_name="eu-west-1")
 key=os.getenv("PINECONE_API_KEY")
 model_id=os.getenv("MODEL_ID")
-print(model_id)
-print(key)
 pc=Pinecone(api_key=key)
 print(f"pinecone intialized{pc}")
 class EmbeddingPipeline:
@@ -23,7 +21,7 @@ class EmbeddingPipeline:
         print("Embeddings initialized")
 embedder=EmbeddingPipeline()
 index=pc.Index("rte-bot")
-print(f"Index reevied{index}")
+
 #Retrieve the data from pinecone
 def Retrieve(query):
     query_vector=embedder.embeddings.embed_query(query)
@@ -39,8 +37,6 @@ def Retrieve(query):
         retrieved_data.append(item_str)
       
     formatted="\n---\n".join(retrieved_data)
-    print(f"Retrieved data: {formatted}")
-    print(f"Retrieved {len(retrieved_data)} items.")
     return formatted
 ##calling bedrock
 def call_bedrock(message,system_prompt):

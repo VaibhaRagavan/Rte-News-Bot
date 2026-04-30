@@ -1,9 +1,11 @@
 # RTE News Bot
+
+A serverless Retrieval-Augmented Generation (RAG) system built with AWS Bedrock and Pinecone for real-time news Q&A.
+
 ---
 # 📖 Overview
 
-This project is a serverless Retrieval-Augmented Generation (RAG) system that ingests live news from RTE RSS feeds, stores embeddings in Pinecone, and enables intelligent Q&A using AWS Bedrock.
-
+A serverless Retrieval-Augmented Generation (RAG) system built with AWS Bedrock and Pinecone for real-time news Q&A.
 The system supports both:
 - Fully Cloud (Serverless) deployment
 - Hybrid (Local + Cloud) deployment

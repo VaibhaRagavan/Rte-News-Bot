@@ -1,4 +1,4 @@
-# RTE News Bot (Serverless RAG with AWS Bedrock + Pinecone)
+# RTE News Bot
 ---
 # 📖 Overview
 

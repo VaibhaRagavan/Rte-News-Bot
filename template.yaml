@@ -1,46 +1,106 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  aws_rag
+  rte-news-bot
+  Serverless RAG pipeline: ingestion, query, and cleanup Lambdas
 
-  Sample SAM Template for aws_rag
-
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 300
     MemorySize: 2048
-
-    # You can add LoggingConfig parameters such as the Logformat, Log Group, and SystemLogLevel or ApplicationLogLevel. Learn more here https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html#sam-function-loggingconfig.
+    Runtime: python3.10
+    Architectures:
+      - x86_64
     LoggingConfig:
       LogFormat: JSON
+    Environment:
+      Variables:
+        PINECONE_API_KEY: ""
+        MODEL_ID: ""
+
 Resources:
-  HelloWorldFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+
+  # ── 1. INGESTION LAMBDA ──────────────────────────────────────────────
+  # Fetches RTE RSS, chunks, embeds, stores in Pinecone
+  # Runs every 4 hours via EventBridge
+  IngestionFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      CodeUri: hello_world/
-      Handler: app.lambda_handler
-      Runtime: python3.10
-      Architectures:
-      - x86_64
-      Environment:
-        Variables:
-          MODEL PROVIDER: 
-          MODEL_ID:
+      FunctionName: rte-bot-ingestion
+      CodeUri: hello_world/ingestion/
+      Handler: news_update.lambda_handler
       Policies:
         - AWSLambdaBasicExecutionRole
-        - Statement:
-          - Effect: Allow
-            Action:
-              - bedrock:InvokeModel
-              - bedrock:InvokeModelWithResponseStream
-              - bedrock:ListFoundationModels
-            Resource: "*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: "*"
       Events:
-        HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+        NewsUpdateSchedule:
+          Type: Schedule
           Properties:
-            Path: /hello
-            Method: get
+            Schedule: rate(4 hours)
+            Name: rte-news-ingestion-schedule
+            Description: Fetches and embeds RTE news every 4 hours
+            Enabled: true
 
-  
+  # ── 2. QUERY LAMBDA ──────────────────────────────────────────────────
+  # Receives a query, retrieves from Pinecone, generates answer via Bedrock
+  # Exposed via API Gateway POST /query
+  QueryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rte-bot-query
+      CodeUri: hello_world/query/
+      Handler: app.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: "*"
+      Events:
+        QueryApi:
+          Type: Api
+          Properties:
+            Path: /query
+            Method: post
+
+  # ── 3. CLEANUP LAMBDA ────────────────────────────────────────────────
+  # Deletes vectors older than 1 day from Pinecone
+  # Runs once daily via EventBridge
+  CleanupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rte-bot-cleanup
+      CodeUri: hello_world/cleanup/
+      Handler: delete_news.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        DailyCleanupSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 day)
+            Name: rte-news-cleanup-schedule
+            Description: Deletes news vectors older than 1 day
+            Enabled: true
+
+Outputs:
+  QueryApiUrl:
+    Description: "API Gateway endpoint for the Query Lambda"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/query"
+
+  IngestionFunctionArn:
+    Description: "Ingestion Lambda ARN"
+    Value: !GetAtt IngestionFunction.Arn
+
+  CleanupFunctionArn:
+    Description: "Cleanup Lambda ARN"
+    Value: !GetAtt CleanupFunction.Arn

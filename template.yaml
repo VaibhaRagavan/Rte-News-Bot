@@ -87,7 +87,7 @@ Resources:
         DailyCleanupSchedule:
           Type: Schedule
           Properties:
-            Schedule: rate(1 day)
+            Schedule: cron( 0 2 * * ? *)
             Name: rte-news-cleanup-schedule
             Description: Deletes news vectors older than 1 day
             Enabled: true

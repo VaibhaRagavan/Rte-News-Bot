@@ -93,7 +93,7 @@ Rte-News-Bot/
 │   │   ├── app.py              # Query Lambda — RAG retrieval + Bedrock LLM
 │   │   └── requirements.txt
 │   └── cleanup/
-│       ├── delete_news.py      # Cleanup Lambda — delete vectors older than 24hrs
+│       ├── delete_news.py      # Cleanup Lambda — delete vectors older than 24hr
 │       └── requirements.txt
 │
 ├── template.yaml               # AWS SAM template (all 3 Lambdas + EventBridge)
@@ -147,39 +147,6 @@ sam local invoke IngestionFunction
 
 # Test cleanup Lambda locally
 sam local invoke CleanupFunction ```
-
----
-
-## 📦 Dependencies (per Lambda)
-
-**Ingestion:**
-```
-feedparser
-langchain
-langchain-aws
-langchain-core
-langchain-text-splitters
-pinecone
-boto3
-python-dotenv
-```
-
-**Query:**
-```
-langchain
-langchain-aws
-langchain-community
-pinecone
-boto3
-python-dotenv
-```
-
-**Cleanup:**
-```
-pinecone
-boto3
-python-dotenv
-```
 
 ---
 

@@ -214,7 +214,6 @@ sam local invoke CleanupFunction ```
 - [ ] Add React or Streamlit chat UI
 - [ ] Expand to multiple news sources (BBC, Irish Times)
 - [ ] Add multilingual support
-- [ ] RAGAS-based retrieval evaluation
 
 ---
 

@@ -11,10 +11,9 @@ load_dotenv()
 bedrock=boto3.client("bedrock-runtime",region_name="eu-west-1")
 key=os.getenv("PINECONE_API_KEY")
 model_id=os.getenv("MODEL_ID")
-print(model_id)
-print(key)
 pc=Pinecone(api_key=key)
 print(f"pinecone intialized{pc}")
+
 class EmbeddingPipeline:
     def __init__(self):
         self.embeddings=BedrockEmbeddings(model_id="amazon.titan-embed-text-v2:0",region_name="eu-west-1")
@@ -22,6 +21,7 @@ class EmbeddingPipeline:
 embedder=EmbeddingPipeline()
 index=pc.Index("rte-bot")
 print(f"Index reevied{index}")
+
 #Retrieve the data from pinecone
 def Retrieve(query):
     query_vector=embedder.embeddings.embed_query(query)
@@ -40,6 +40,7 @@ def Retrieve(query):
     print(f"Retrieved data: {formatted}")
     print(f"Retrieved {len(retrieved_data)} items.")
     return formatted
+    
 ##calling bedrock
 def call_bedrock(message,system_prompt):
     response=bedrock.converse(
@@ -50,11 +51,13 @@ def call_bedrock(message,system_prompt):
     response_body=response["output"]["message"]["content"][0]["text"]
     return response_body
 ##storing the chat memory
+
 store={}
 def get_chat_history(session_id):
     if session_id not in store:
         store[session_id]=ChatMessageHistory()
     return store[session_id]
+    
 ## build the prompt message 
 def build_prompt(history,query,context):
     messages=[]
@@ -91,6 +94,7 @@ Return:
             "content":[{"text": msg.content}]
         })
     return messages
+    
 ##cleanning the response
 def clean_response(text):
     # removes ```json ... ``` wrapper if LLM adds it
@@ -98,6 +102,7 @@ def clean_response(text):
     text = re.sub(r'^```json\s*', '', text)
     text = re.sub(r'```$', '', text)
     return text.strip()
+    
 ##generating the result
 def lambda_handler(event, lambda_context):
     query = event.get("query")
@@ -107,7 +112,7 @@ def lambda_handler(event, lambda_context):
     retrieved_context = Retrieve(query)
     memory=get_chat_history(session_id)
     message=build_prompt(memory, query, retrieved_context)
-    system_prompt="You are a professional global news assistant"
+    system_prompt="You are a professional  news assistant"
     res=call_bedrock(message,system_prompt)
     response=clean_response(res)
     #save the current chat

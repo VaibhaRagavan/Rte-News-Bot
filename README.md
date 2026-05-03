@@ -120,8 +120,8 @@ Create a `.env` file in the root:
 ```
 PINECONE_API_KEY=your_pinecone_api_key
 MODEL_ID=your_bedrock_model_id
-AWS_REGION=eu-west-1
-INDEX_NAME=rte-bot
+AWS_REGION= region
+INDEX_NAME=pincone index name
 ```
 > ⚠️ Never commit your `.env` file. Make sure it is in `.gitignore`.
 

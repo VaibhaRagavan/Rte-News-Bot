@@ -1,186 +1,257 @@
-# RTE News Bot
+# 🗞️ RTE News Bot
 
-A serverless Retrieval-Augmented Generation (RAG) system built with AWS Bedrock and Pinecone for real-time news Q&A.
-The system supports both:
-- Fully Cloud (Serverless) deployment
-- Hybrid (Local + Cloud) deployment
+A production-style serverless RAG (Retrieval-Augmented Generation) pipeline that ingests live Irish news from RTE, stores it as semantic vectors, and answers natural language queries using AWS Bedrock.
 
-It is built using AWS Lambda, EventBridge, SAM, Bedrock, and Pinecone.
+Built with **AWS Lambda · Bedrock · Pinecone · EventBridge · SAM · Python 3.10**
 
 ---
-# 🚀 Architecture Overview
 
-The system is divided into three Lambda functions:
+## 🏗️ Architecture
 
-1. 🆕 Ingestion Lambda (**news_update.py**) (EventBridge Scheduled)
-- Fetches RSS news from RTE
-- Cleans and chunks articles
-- Generates embeddings using AWS Bedrock (amazon.titan-embed-text-v2:0)
-- Stores vectors in Pinecone
-2. 🧠 Generation Lambda (**app.py**) (API Gateway Trigger)
-- Accepts user queries
-- Retrieves relevant news from Pinecone
-- Sends context to AWS Bedrock LLM
-- Returns structured JSON response
-3. 🗑️ Cleanup Lambda (**delete_news.py**) (EventBridge Scheduled)
--Deletes old news vectors from Pinecone
-- Keeps vector DB fresh and optimized
----
-# 🔄 Deployment Modes
+Three independent Lambda functions, each with a single responsibility:
 
-  # ☁️ Fully Cloud (Serverless Mode)
--All components run on AWS:
-  * EventBridge → triggers ingestion & cleanup
-  * API Gateway → triggers query Lambda
-  Flow:
-```
-  EventBridge → Lambda → Pinecone → Bedrock → Response
-```
-  ✅ Benefits:
-  - Fully automated
-  - Scalable
-  - Production-ready
-  
----
+| Lambda | File | Trigger | Responsibility |
+|---|---|---|---|
+| Ingestion | `news_update.py` | EventBridge (every 4 hrs) | Fetch RTE RSS → chunk → embed → store in Pinecone |
+| Query | `app.py` | API Gateway POST `/query` | Retrieve relevant vectors → generate answer via Bedrock LLM |
+| Cleanup | `delete_news.py` | EventBridge (daily) | Delete vectors older than 24 hrs to keep index fresh |
 
-# 🖥️ Hybrid Mode (Local + Cloud)
- - Run ingestion & delete locally using cron
- - Use AWS Lambda for query handling
- Flow:
 ```
-  Local Cron → Pinecone → Lambda → Bedrock → Response
+EventBridge (4hr)
+      │
+      ▼
+  Ingestion Lambda
+      │  RSS → chunk → embed
+      ▼
+  Pinecone Vector DB ◄────── Query Lambda ◄── API Gateway ◄── User
+                                  │
+                                  ▼
+                            Bedrock LLM
+                                  │
+                                  ▼
+                          Structured JSON Response
+
+EventBridge (daily)
+      │
+      ▼
+  Cleanup Lambda
+      │  delete vectors > 24hrs
+      ▼
+  Pinecone Vector DB
 ```
-- Example cron job:
- ``` 
-    0 * * * * python lambdas/news_update.py
-```
-  ✅ Benefits:
-   - Easier local testing
-   - Faster development
-   - No EventBridge setup needed
-    
-  ---
-# ✨ Features
-- Live RSS News Ingestion (RTE)
-- Semantic Search using Pinecone
-- Context-aware LLM responses via AWS Bedrock
-- Chat memory support
-- Automated cleanup with scheduling
-- Fully serverless architecture
 
 ---
-# 🧠 System Flow
-```mermaid
-graph LR
-    A[RSS Feed] --> B[Data Ingestion]
-    B --> C[Bedrock Embeddings]
-    C --> D[Pinecone Vector DB]
-    E[User Query] --> F[Lambda Handler]
-    F --> D
-    F --> G[Bedrock LLM]
-    G --> H[Final Response]
+
+## ✨ Features
+
+- **Live news ingestion** — RTE RSS feed auto-refreshed every 4 hours
+- **Semantic search** — Pinecone vector DB with Bedrock Titan embeddings
+- **Contextual answers** — AWS Bedrock LLM with retrieved news as context
+- **Auto-cleanup** — old vectors deleted daily, keeping the index lean and current
+- **Two deployment modes** — fully serverless (AWS) or hybrid (local cron + Lambda)
+- **Structured responses** — returns JSON with headline, date, points, summary, and source links
+
+---
+
+## 🔄 Deployment Modes
+
+### ☁️ Fully Serverless (Recommended)
+Everything runs on AWS. EventBridge schedules ingestion and cleanup automatically.
+
 ```
+EventBridge → Ingestion Lambda → Pinecone → Bedrock
+EventBridge → Cleanup Lambda  → Pinecone
+API Gateway → Query Lambda    → Pinecone + Bedrock → Response
+```
+
+### 🖥️ Hybrid (Local + Cloud)
+Run ingestion and cleanup locally via cron. Use Lambda only for query handling. Good for development and testing.
+
+```
+Local Cron → news_update.py → Pinecone
+Local Cron → delete_news.py → Pinecone
+API Gateway → Query Lambda  → Pinecone + Bedrock → Response
+```
+
+Example cron (runs ingestion every 4 hours):
+```
+0 */4 * * * python hello_world/ingestion/news_update.py
+```
+
 ---
-# 🛠️ Tech Stack
-* AWS Lambda
-* AWS Bedrock (Titan Embeddings + LLM)
-* Pinecone Vector Database
-* EventBridge (Scheduled Jobs)
-* Python 3.10
-* feedparser
----
-# 📁 Project Structure
+
+## 📁 Project Structure
+
 ```
 Rte-News-Bot/
 │
-├── lambdas/
-│   ├── app.py            # RAG chatbot handler
-│   ├── news_update.py   # RSS → Pinecone ingestion
-│   └── delete_news.py  # delete old vectors
+├── hello_world/
+│   ├── ingestion/
+│   │   ├── news_update.py      # Ingestion Lambda — RSS → chunk → embed → Pinecone
+│   │   └── requirements.txt
+│   ├── query/
+│   │   ├── app.py              # Query Lambda — RAG retrieval + Bedrock LLM
+│   │   └── requirements.txt
+│   └── cleanup/
+│       ├── delete_news.py      # Cleanup Lambda — delete vectors older than 24hrs
+│       └── requirements.txt
 │
-├── template.yaml        # AWS SAM template
-├── requirements.txt
-├── event.json           # test event for Lambda
+├── template.yaml               # AWS SAM template (all 3 Lambdas + EventBridge)
+├── samconfig.toml              # SAM deployment config
+├── event.json                  # Test event for local Lambda invocation
 └── README.md
 ```
+
 ---
-# ⚙️ AWS SAM Setup
-1. Install SAM CLI
-pip install aws-sam-cli
-2. Build
-sam build
-3. Deploy
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Python 3.10+
+- AWS CLI configured (`aws configure`)
+- AWS SAM CLI installed
+- Docker (required for `sam build --use-container`)
+- Pinecone account + API key
+- AWS Bedrock access enabled in your region
+
+
+### 1. Set up environment variables
+Create a `.env` file in the root:
+```
+PINECONE_API_KEY=your_pinecone_api_key
+MODEL_ID=your_bedrock_model_id
+AWS_REGION=eu-west-1
+INDEX_NAME=rte-bot
+```
+> ⚠️ Never commit your `.env` file. Make sure it is in `.gitignore`.
+
+### 2. Build with SAM
+```bash
+sam build --use-container
+```
+> Using `--use-container` ensures dependencies are built for the correct Lambda runtime (Amazon Linux), avoiding platform compatibility issues.
+
+### 3. Deploy
+```bash
 sam deploy --guided
----
-# 🧾 SAM Template (EventBridge Scheduling)
 ```
-AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::Serverless-2016-10-31
-Description: RTE News RAG System
+SAM will prompt you for stack name, region, and confirmation. After deploy, the API Gateway URL is printed in the outputs — save this as your query endpoint.
 
-Globals:
-  Function:
-    Runtime: python3.10
-    Timeout: 30
-    MemorySize: 512
+### 4. Test locally
+```bash
+# Test query Lambda locally
+sam local invoke QueryFunction --event event.json
 
-Resources:
+# Test ingestion Lambda locally
+sam local invoke IngestionFunction 
 
-  GenerateFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: lambdas.app.lambda_handler
-      Events:
-        ApiEvent:
-          Type: Api
-          Properties:
-            Path: /query
-            Method: post
+# Test cleanup Lambda locally
+sam local invoke CleanupFunction ```
 
-  IngestionFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: lambdas.news_update.lambda_handler
-      Events:
-        IngestionSchedule:
-          Type: Schedule
-          Properties:
-            Schedule: rate(4 hour)
+---
 
-  CleanupFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: lambdas.delete_news.lambda_handler
-      Events:
-        CleanupSchedule:
-          Type: Schedule
-          Properties:
-            Schedule: cron(0 3 * * ? *)
+## 📦 Dependencies (per Lambda)
+
+**Ingestion:**
 ```
----
-# 🔐 Environment Variables
-Create a .env file:
+feedparser
+langchain
+langchain-aws
+langchain-core
+langchain-text-splitters
+pinecone
+boto3
+python-dotenv
 ```
-PINECONE_API_KEY=your_key
-MODEL_ID=your_bedrock_model
-AWS_REGION= your_region
-INDEX_NAME=index name from the pinecone
+
+**Query:**
 ```
+langchain
+langchain-aws
+langchain-community
+pinecone
+boto3
+python-dotenv
+```
+
+**Cleanup:**
+```
+pinecone
+boto3
+python-dotenv
+```
+
 ---
-# 🧠 Key Design Decisions
-- Serverless-first architecture
-- Separation of ingestion, retrieval, and cleanup
-- Event-driven automation via EventBridge
-- Pinecone as vector memory layer
-- Bedrock for embeddings + LLM
+
+## 📬 API Usage
+
+**Endpoint:** `POST /query`
+
+**Request body:**
+```json
+{
+  "query": "What is the latest news about Ireland?",
+}
+```
+
+**Response:**
+```json
+{
+  "statusCode": 200,
+  "body": {
+    "response": {
+      "headline": "Top Global News for 2026-05-02",
+      "date": "2026-05-02",
+      "points": [
+        "Key news point 1...",
+        "Key news point 2..."
+      ],
+      "articles": [
+        {
+          "title": "Article title",
+          "url": "https://www.rte.ie/news/..."
+        }
+      ],
+      "summary": "Today's top stories include..."
+    }
+  }
+}
+```
+
 ---
-# 📌 Future Improvements
-- Add React chat UI
-- Store chat history in DynamoDB
-- Add multilingual support
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Cloud & Serverless | AWS Lambda, EventBridge, API Gateway, SAM |
+| Embeddings | AWS Bedrock — Titan Embed Text v2 |
+| LLM | AWS Bedrock (configurable via `MODEL_ID`) |
+| Vector DB | Pinecone (Serverless, cosine similarity, 1024 dims) |
+| News Source | RTE RSS Feed via feedparser |
+| Text Splitting | LangChain Text Splitters |
+| Language | Python 3.10 |
+
 ---
-# ⭐ Summary
-This project demonstrates a production-style serverless RAG pipeline capable of:
-* ingesting live news
-* performing semantic search
-* generating contextual AI responses
+
+## ⚠️ Known Limitations
+
+- **Chat memory is in-memory only** — conversation history resets on Lambda cold start. DynamoDB integration planned.
+- **Single news source** — currently ingests RTE only. Multi-source support on the roadmap.
+
+---
+
+## 🗺️ Future Improvments
+
+- [ ] Store chat history in DynamoDB for persistent sessions
+- [ ] Add React or Streamlit chat UI
+- [ ] Expand to multiple news sources (BBC, Irish Times)
+- [ ] Add multilingual support
+- [ ] RAGAS-based retrieval evaluation
+
+---
+
+## 👩‍💻 Author
+
+**Vaibha Ragavan** — AI/ML Engineer  
+[GitHub](https://github.com/VaibhaRagavan) · [LinkedIn](https://www.linkedin.com/in/vaibha-ragavan)

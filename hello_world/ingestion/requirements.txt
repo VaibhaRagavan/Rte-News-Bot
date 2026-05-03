@@ -1,0 +1,8 @@
+feedparser
+langchain
+langchain-aws
+langchain-text-splitters
+langchain-community
+pinecone
+python-dotenv
+greenlet==3.0.3

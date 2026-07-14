@@ -105,6 +105,7 @@ def clean_response(text):
     
 ##generating the result
 def lambda_handler(event, lambda_context):
+    body = json.loads(event.get("body", "{}"))
     query = event.get("query")
     session_id=event.get("session_id") or str(uuid.uuid4())
     print(f"Query received: {query}")

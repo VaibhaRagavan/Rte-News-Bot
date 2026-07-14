@@ -103,7 +103,7 @@ class VectorStore:
                 records=[]
                 for i,(vector,chunk) in enumerate(zip(vectors,chunks)):
                 
-                    source_id = f"{chunk.metadata['source']}"
+                    source_id = f"{chunk.metadata['source']}_{i}"
                     records.append((
                             source_id,   
                             vector,

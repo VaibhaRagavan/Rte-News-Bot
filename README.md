@@ -205,6 +205,7 @@ sam local invoke CleanupFunction ```
 
 - **Chat memory is in-memory only** — conversation history resets on Lambda cold start. DynamoDB integration planned.
 - **Single news source** — currently ingests RTE only. Multi-source support on the roadmap.
+- **Vector IDs**: chunk IDs are suffixed with an index to avoid Pinecone upserts overwriting multiple chunks from the same article.
 
 ---
 
